@@ -1,3 +1,4 @@
 src/*.o
 src/main
 src/*.mod
+src/fort*
