@@ -162,8 +162,10 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
      dt = 2.*dt0
    endif
 !
-   do k=1,nz ! Start vertical loop
-!   
+   do k=1,nz ! Start vertical loop 
+!
+! Horizontal advection: leapfrog scheme
+!
      do i=1,nx+1
        do j=1,ny+1
          im = max(1,i-1)
@@ -175,16 +177,26 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
      enddo 
      zpu(:,:) = pu(:,:,k,ntm)/pim(:,:)
      zpv(:,:) = pv(:,:,k,ntm)/pim(:,:)
-!
-! Advection : leapfrog scheme
-!
+
      call advech_uv (zpu,zpv,pu(:,:,k,ntm),advhu)
      call advech_uv (zpu,zpv,pv(:,:,k,ntm),advhv)
      call advech_hq (zpu,zpv,h (:,:,k,ntm),advhh)
      call advech_hq (zpu,zpv,pq(:,:,k,ntm),advhq)
 !
-! Horizontal diffusion : Euler forward scheme 
-!
+! Horizontal diffusion: Euler forward scheme 
+!    
+     do i=1,nx+1
+       do j=1,ny+1
+         im = max(1,i-1)
+         jm = max(1,j-1)
+         ip = min(i,nx)
+         jp = min(j,ny)
+         pim(i,j) = 0.25*(pi(ip,jp,nti) + pi(im,jp,nti) + pi(ip,jm,nti) + pi(im,jm,nti))
+       enddo
+     enddo 
+     zpu(:,:) = pu(:,:,k,nti)/pim(:,:)
+     zpv(:,:) = pv(:,:,k,nti)/pim(:,:)
+
      call diff_horiz_uv (kh(k),zpu,diffhu)
      call diff_horiz_uv (kh(k),zpv,diffhv)
      call diff_horiz_hq (kh(k),h (:,:,k,nti),diffhh)
@@ -276,9 +288,9 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
          zzpqp = 0.5*(pq(i,j,kp,ntm) + pq(i,j,k,ntm))
          zzpqm = 0.5*(pq(i,j,k,ntm) + pq(i,j,km,ntm))
          advvq = -1.0/(sigp(k)*dnu)*(nudot(i,j,k+1)*sigp1*zzpqp - nudot(i,j,k)*sigp2*zzpqm) 
-
-! ----------------------------------------------------------------------------------------
-
+!
+!   Vertical diffusion --------------------------------------------------------------------
+!
          zakmp = 0.5*(zapbar*zkmbarp + zabar*zkmbar)
          zakmm = 0.5*(zambar*zkmbarm + zabar*zkmbar)
 !
@@ -290,25 +302,25 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 
          if (k /= nz) then 
      
-           diffvu = (zabar/dnu)*((pu(i,j,kp,ntm) - pu(i,j,k,ntm))*zakmp/dnup - & 
-                  &              (pu(i,j,k,ntm) - pu(i,j,km,ntm))*zakmm/dnum)
-           diffvv = (zabar/dnu)*((pv(i,j,kp,ntm) - pv(i,j,k,ntm))*zakmp/dnup - & 
-                  &              (pv(i,j,k,ntm) - pv(i,j,km,ntm))*zakmm/dnum)
-           diffvh = (za/dnu)*((h (i,j,kp,ntm) - h (i,j,k,ntm))*zakhp/dnup - &  
-                  &           (h (i,j,k,ntm) - h (i,j,km,ntm))*zakhm/dnum)
-           diffvq = (za/dnu)*((pq(i,j,kp,ntm) - pq(i,j,k,ntm))*zakhp/dnup - &  
-                  &           (pq(i,j,k,ntm) - pq(i,j,km,ntm))*zakhm/dnum)
+           diffvu = (zabar/dnu)*((pu(i,j,kp,nti) - pu(i,j,k,nti))*zakmp/dnup - & 
+                  &              (pu(i,j,k,nti) - pu(i,j,km,nti))*zakmm/dnum)
+           diffvv = (zabar/dnu)*((pv(i,j,kp,nti) - pv(i,j,k,nti))*zakmp/dnup - & 
+                  &              (pv(i,j,k,nti) - pv(i,j,km,nti))*zakmm/dnum)
+           diffvh = (za/dnu)*((h (i,j,kp,nti) - h (i,j,k,nti))*zakhp/dnup - &  
+                  &           (h (i,j,k,nti) - h (i,j,km,nti))*zakhm/dnum)
+           diffvq = (za/dnu)*((pq(i,j,kp,nti) - pq(i,j,k,nti))*zakhp/dnup - &  
+                  &           (pq(i,j,k,nti) - pq(i,j,km,nti))*zakhm/dnum)
 
          else ! introduction of surface fluxes
      
            diffvu = (zabar/dnu)*(fluxum(i,j) - & 
-                  &             (pu(i,j,k,ntm) - pu(i,j,km,ntm))*zakmm/dnum)
+                  &             (pu(i,j,k,nti) - pu(i,j,km,nti))*zakmm/dnum)
            diffvv = (zabar/dnu)*(fluxvm(i,j) - & 
-                  &             (pv(i,j,k,ntm) - pv(i,j,km,ntm))*zakmm/dnum)
+                  &             (pv(i,j,k,nti) - pv(i,j,km,nti))*zakmm/dnum)
            diffvh = (za/dnu)*(fluxh(i,j) - &  
-                  &          (h (i,j,k,ntm) - h (i,j,km,ntm))*zakhm/dnum)
+                  &          (h (i,j,k,nti) - h (i,j,km,nti))*zakhm/dnum)
            diffvq = (za/dnu)*(fluxq(i,j) - &  
-                  &          (pq(i,j,k,ntm) - pq(i,j,km,ntm))*zakhm/dnum)
+                  &          (pq(i,j,k,nti) - pq(i,j,km,nti))*zakhm/dnum)
          endif
 !
          pu(i,j,k,ntf) =  pu(i,j,k,ntf) + dt*(diffvu + advvu)!(advvu + diffvu)
