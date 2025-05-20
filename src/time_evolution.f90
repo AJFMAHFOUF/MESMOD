@@ -35,7 +35,7 @@ subroutine time_evolution
 ! Define input - output files
 !
  open (unit=88,file='../data/windsurf.dat')
- open (unit=40,file='../data/initial_conditions_hawaii4.dat')
+ open (unit=40,file='../data/initial_conditions_ideal1.dat')
 !
 ! Set-up various parameters
 !
