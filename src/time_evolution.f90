@@ -30,12 +30,15 @@ subroutine time_evolution
                                   &  zambar, zap, zap1, zap2, zap3, zapbar, zkmbar, zkmbarm, zkmbarp, zp, &
                                   &  zp1, zp2, zp3, zpm, zpm1, zpm2, zpm3, zpp, zpp1, zpp2, zpp3, zzhm, zzhp, &
                                   &  zzpqm, zzpqp, zzpum, zzpup, zzpvm, zzpvp, p, xpi
- real                             :: kscale, filter
+ real                             :: kscale, filter, t1, t2, nudotp1, nudotp2
+ logical                          :: l_lbc_cst
 !
 ! Define input - output files
 !
  open (unit=88,file='../data/windsurf.dat')
  open (unit=40,file='../data/initial_conditions_ideal1.dat')
+!
+ call cpu_time(time=t1) 
 !
 ! Set-up various parameters
 !
@@ -44,6 +47,7 @@ subroutine time_evolution
  alpha = 0.5
  wk = 0.0 ! pure Asselin filter
  kscale = 0.5*((dx*dx) + (dy*dy))/(2.*dt0)
+ l_lbc_cst=.false.
 !
 ! Define horizontal diffusion coefficient + sponge layer @ model top
 !
@@ -146,7 +150,7 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 ! Start temporal loop
 !
  do nstep=1,nstep_max
-   print  *,'nstep',nstep
+!   print  *,'nstep',nstep
 !
 ! Horizontal transfers (advection - pressure gradient - horizontal diffusion)
 !
@@ -273,15 +277,18 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
          else
            dnu = 0.5*(nu(k+1) - nu(k-1))
          endif
+         
+         nudotp1 = 0.25*(nudot(i,j,k+1) + nudot(i-1,j,k+1) + nudot(i,j-1,k+1) + nudot(i-1,j-1,k+1))
+         nudotp2 = 0.25*(nudot(i,j,k)   + nudot(i-1,j,k)   + nudot(i,j-1,k) + nudot(i-1,j-1,k))
 !  
          sigp1 = 0.5*(sigp(k)+sigp(k+1))
          sigp2 = 0.5*(sigp(k)+sigp(k-1))
          zzpup = 0.5*(pu(i,j,kp,ntm) + pu(i,j,k,ntm))
          zzpum = 0.5*(pu(i,j,k,ntm) + pu(i,j,km,ntm))
-         advvu = -1.0/(sigp(k)*dnu)*(nudot(i,j,k+1)*sigp1*zzpup - nudot(i,j,k)*sigp2*zzpum) 
+         advvu = -1.0/(sigp(k)*dnu)*(nudotp1*sigp1*zzpup - nudotp2*sigp2*zzpum) 
          zzpvp = 0.5*(pv(i,j,kp,ntm) + pv(i,j,k,ntm))
          zzpvm = 0.5*(pv(i,j,k,ntm) + pv(i,j,km,ntm))
-         advvv = -1.0/(sigp(k)*dnu)*(nudot(i,j,k+1)*sigp1*zzpvp - nudot(i,j,k)*sigp2*zzpvm) 
+         advvv = -1.0/(sigp(k)*dnu)*(nudotp1*sigp1*zzpvp - nudotp2*sigp2*zzpvm) 
          zzhp  = 0.5*(h(i,j,kp,ntm) + h(i,j,k,ntm))
          zzhm  = 0.5*(h(i,j,k,ntm) + h(i,j,km,ntm))
          advvh = -1.0/(sigp(k)*dnu)*(nudot(i,j,k+1)*sigp1*zzhp - nudot(i,j,k)*sigp2*zzhm) 
@@ -342,7 +349,8 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
      do i = 1,nx
        do j = 1,ny
          kk = 11
-         write (88,*) i,j,(pu(i,j,kk,ntm)/pim(i,j)),(pv(i,j,kk,ntm)/pim(i,j)) !,exp(h(i,j,kk,ntm)/pi(i,j,ntm)),ustar(i,j),cp*ustar(i,j)*tstar(i,j)
+         write (88,*) i,j,(pu(i,j,kk,ntm)/pim(i,j)),(pv(i,j,kk,ntm)/pim(i,j)) 
+!                    ,exp(h(i,j,kk,ntm)/pi(i,j,ntm)),ustar(i,j),cp*ustar(i,j)*tstar(i,j)
        enddo
      enddo
      close (unit=88)
@@ -430,40 +438,61 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 !
    pu(:,:,1,:) = pu(:,:,2,:)
    pv(:,:,1,:) = pv(:,:,2,:)
-!  h(:,:,1,:)  = h(:,:,2,:)
+   h(:,:,1,:)  = h(:,:,2,:)
    pq(:,:,1,:) = pq(:,:,2,:)
 !
 !  Define lateral boundary conditions (thermodynamical variables)
 !
-   h(nx,:,:,:)  = h(nx-1,:,:,:)
-   pq(nx,:,:,:) = pq(nx-1,:,:,:)
-   h(1,:,:,:)   = h(2,:,:,:)
-   pq(1,:,:,:)  = pq(2,:,:,:)
-   h(:,ny,:,:)  = h(:,ny-1,:,:)
-   pq(:,ny,:,:) = pq(:,ny-1,:,:)
-   h(:,1,:,:)   = h(:,2,:,:)
-   pq(:,1,:,:)  = pq(:,2,:,:)
-   pi(:,1,:)    = pi(:,2,:)
-   pi(1,:,:)    = pi(2,:,:)
-   pi(nx,:,:)   = pi(nx-1,:,:)
-   pi(:,ny,:)   = pi(:,ny-1,:)
+   if (.not.l_lbc_cst) then 
+!   
+     h(nx,:,:,:)  = h(nx-1,:,:,:)
+     pq(nx,:,:,:) = pq(nx-1,:,:,:)
+     h(1,:,:,:)   = h(2,:,:,:)
+     pq(1,:,:,:)  = pq(2,:,:,:)
+     h(:,ny,:,:)  = h(:,ny-1,:,:)
+     pq(:,ny,:,:) = pq(:,ny-1,:,:)
+     h(:,1,:,:)   = h(:,2,:,:)
+     pq(:,1,:,:)  = pq(:,2,:,:)
+     pi(:,1,:)    = pi(:,2,:)
+     pi(1,:,:)    = pi(2,:,:)
+     pi(nx,:,:)   = pi(nx-1,:,:)
+     pi(:,ny,:)   = pi(:,ny-1,:)
 !
 !  Corner values
 !
-   h(nx,1,:,:)  = h(nx-1,2,:,:)
-   h(1,ny,:,:)  = h(2,ny-1,:,:)
-   h(1,1,:,:)   = h(2,2,:,:)
-   h(nx,ny,:,:) = h(nx-1,ny-1,:,:)
+     h(nx,1,:,:)  = h(nx-1,2,:,:)
+     h(1,ny,:,:)  = h(2,ny-1,:,:)
+     h(1,1,:,:)   = h(2,2,:,:)
+     h(nx,ny,:,:) = h(nx-1,ny-1,:,:)
 !
-   pq(nx,1,:,:)  = pq(nx-1,2,:,:)
-   pq(1,ny,:,:)  = pq(2,ny-1,:,:)
-   pq(1,1,:,:)   = pq(2,2,:,:)
-   pq(nx,ny,:,:) = pq(nx-1,ny-1,:,:)
+     pq(nx,1,:,:)  = pq(nx-1,2,:,:)
+     pq(1,ny,:,:)  = pq(2,ny-1,:,:)
+     pq(1,1,:,:)   = pq(2,2,:,:)
+     pq(nx,ny,:,:) = pq(nx-1,ny-1,:,:)
 !
-   pi(nx,1,:)   = pi(nx-1,2,:)
-   pi(1,ny,:)   = pi(2,ny-1,:)
-   pi(1,1,:)    = pi(2,2,:)
-   pi(nx,ny,:)  = pi(nx-1,ny-1,:)
+     pi(nx,1,:)   = pi(nx-1,2,:)
+     pi(1,ny,:)   = pi(2,ny-1,:)
+     pi(1,1,:)    = pi(2,2,:)
+     pi(nx,ny,:)  = pi(nx-1,ny-1,:)
+!     
+   else ! Keep boundary conditions fixed in time
+!   
+     do nt=1,3
+       h(nx,:,:,nt)  = h_init(nx,:,:)
+       pq(nx,:,:,nt) = pq_init(nx,:,:)
+       h(1,:,:,nt)   = h_init(1,:,:)
+       pq(1,:,:,nt)  = pq_init(1,:,:)
+       h(:,ny,:,nt)  = h_init(:,ny,:)
+       pq(:,ny,:,nt) = pq_init(:,ny,:)
+       h(:,1,:,nt)   = h_init(:,1,:)
+       pq(:,1,:,nt)  = pq_init(:,1,:)
+       pi(:,1,nt)    = pi_init(:,1)
+       pi(1,:,nt)    = pi_init(1,:)
+       pi(nx,:,nt)   = pi_init(nx,:)
+       pi(:,ny,nt)   = pi_init(:,ny)
+     enddo
+!
+   endif 
 !
 !  Lower horizontal axis (wind components)
 !
@@ -563,10 +592,12 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 !  4) Exchange coefficients (at mass points)
 !
    call eddy_coefficients (phi,ustar,ff,fg,kdifh,kdifm)
-   print *,'exchange coefficients ok',lv*ustar(10,18)*qstar(10,18),cp*ustar(10,18)*tstar(10,18),pi(19,18,2)
-   print *,'one time step ok'
+!   print *,'exchange coefficients ok',lv*ustar(10,18)*qstar(10,18),cp*ustar(10,18)*tstar(10,18),pi(19,18,2)
+!   print *,'one time step ok'
 !   
  enddo ! End of temporal loop
 !
+ call cpu_time(time=t2)
+ print *,'Total execution time for MESMOD =',t2-t1,' sec for ',nstep_max*dt0/3600.0,' hours'
  return 
 end subroutine time_evolution
