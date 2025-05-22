@@ -3,7 +3,7 @@ subroutine diff_horiz_uv (kh,x,d11)
 ! 
  implicit none
 ! 
- real, intent(in)                         :: kh
+ real,                        intent(in)  :: kh
  real, dimension (nx+1,nx+1), intent(in)  :: x
  real, dimension (nx+1,ny+1), intent(out) :: d11
 ! 

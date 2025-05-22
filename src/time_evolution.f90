@@ -30,7 +30,7 @@ subroutine time_evolution
                                   &  zambar, zap, zap1, zap2, zap3, zapbar, zkmbar, zkmbarm, zkmbarp, zp, &
                                   &  zp1, zp2, zp3, zpm, zpm1, zpm2, zpm3, zpp, zpp1, zpp2, zpp3, zzhm, zzhp, &
                                   &  zzpqm, zzpqp, zzpum, zzpup, zzpvm, zzpvp, p, xpi
- real                             :: kscale
+ real                             :: kscale, filter
 !
 ! Define input - output files
 !
@@ -185,20 +185,20 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 !
 ! Horizontal diffusion: Euler forward scheme 
 !    
-     do i=1,nx+1
-       do j=1,ny+1
-         im = max(1,i-1)
-         jm = max(1,j-1)
-         ip = min(i,nx)
-         jp = min(j,ny)
-         pim(i,j) = 0.25*(pi(ip,jp,nti) + pi(im,jp,nti) + pi(ip,jm,nti) + pi(im,jm,nti))
-       enddo
-     enddo 
-     zpu(:,:) = pu(:,:,k,nti)/pim(:,:)
-     zpv(:,:) = pv(:,:,k,nti)/pim(:,:)
+!     do i=1,nx+1
+!       do j=1,ny+1
+!         im = max(1,i-1)
+!         jm = max(1,j-1)
+!         ip = min(i,nx)
+!         jp = min(j,ny)
+!         pim(i,j) = 0.25*(pi(ip,jp,nti) + pi(im,jp,nti) + pi(ip,jm,nti) + pi(im,jm,nti))
+!       enddo
+!     enddo 
+!     zpu(:,:) = pu(:,:,k,nti)/pim(:,:)
+!     zpv(:,:) = pv(:,:,k,nti)/pim(:,:)
 
-     call diff_horiz_uv (kh(k),zpu,diffhu)
-     call diff_horiz_uv (kh(k),zpv,diffhv)
+     call diff_horiz_uv (kh(k),pu(:,:,k,nti),diffhu)
+     call diff_horiz_uv (kh(k),pv(:,:,k,nti),diffhv)
      call diff_horiz_hq (kh(k),h (:,:,k,nti),diffhh)
      call diff_horiz_hq (kh(k),pq(:,:,k,nti),diffhq)
 ! 
@@ -209,10 +209,10 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
      call pressure_gradx (k,pi(:,:,ntm),phik,tv,press,pgradx)
      call pressure_grady (k,pi(:,:,ntm),phik,tv,press,pgrady)
 !
-     pu(:,:,k,ntf) = pu(:,:,k,ntm) + dt*pim(:,:)*diffhu(:,:)  ! + dt*(advhu(:,:) + f_coriolis*pv(:,:,k,ntm) + pgradx(:,:) + pim(:,:)*diffhu(:,:))
-     pv(:,:,k,ntf) = pv(:,:,k,ntm) + dt*pim(:,:)*diffhv(:,:) ! + dt*(advhv(:,:) - f_coriolis*pu(:,:,k,ntm) + pgrady(:,:) + pim(:,:)*diffhv(:,:)) 
-     h (:,:,k,ntf) = h (:,:,k,ntm) + dt*diffhh(:,:) ! + dt*(advhh(:,:) + diffhh(:,:))
-     pq(:,:,k,ntf) = pq(:,:,k,ntm) + dt*diffhq(:,:) ! + dt*(advhq(:,:) + diffhq(:,:)) 
+     pu(:,:,k,ntf) = pu(:,:,k,nti) + dt*diffhu(:,:)  ! + dt*(advhu(:,:) + f_coriolis*pv(:,:,k,ntm) + pgradx(:,:) + pim(:,:)*diffhu(:,:))
+     pv(:,:,k,ntf) = pv(:,:,k,nti) + dt*diffhv(:,:) ! + dt*(advhv(:,:) - f_coriolis*pu(:,:,k,ntm) + pgrady(:,:) + pim(:,:)*diffhv(:,:)) 
+     h (:,:,k,ntf) = h (:,:,k,nti) + dt*diffhh(:,:) ! + dt*(advhh(:,:) + diffhh(:,:))
+     pq(:,:,k,ntf) = pq(:,:,k,nti) + dt*diffhq(:,:) ! + dt*(advhq(:,:) + diffhq(:,:)) 
 !     
    enddo ! End vertical loop
 !
@@ -382,17 +382,33 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 !  Apply an Asselin filter on prognostic variables (modified by Williams, 2009)
 !
    if (nstep > 1) then
-     pu(:,:,:,2) = pu(:,:,:,2) + 0.5*alpha*wk*(pu(:,:,:,3) + pu(:,:,:,1) - 2.0*pu(:,:,:,2))  
-     pv(:,:,:,2) = pv(:,:,:,2) + 0.5*alpha*wk*(pv(:,:,:,3) + pv(:,:,:,1) - 2.0*pv(:,:,:,2))  
-     h (:,:,:,2) = h (:,:,:,2) + 0.5*alpha*wk*(h (:,:,:,3) + h (:,:,:,1) - 2.0*h (:,:,:,2))  
-     pq(:,:,:,2) = pq(:,:,:,2) + 0.5*alpha*wk*(pq(:,:,:,3) + pq(:,:,:,1) - 2.0*pq(:,:,:,2))  
-     pi(:,:,2)   = pi(:,:,2)   + 0.5*alpha*wk*(pi(:,:,3)   + pi(:,:,1)   - 2.0*pi(:,:,2))  
-!
-     pu(:,:,:,3) = pu(:,:,:,3) - 0.5*alpha*(1.0 - wk)*(pu(:,:,:,3) + pu(:,:,:,1) - 2.0*pu(:,:,:,2))  
-     pv(:,:,:,3) = pv(:,:,:,3) - 0.5*alpha*(1.0 - wk)*(pv(:,:,:,3) + pv(:,:,:,1) - 2.0*pv(:,:,:,2))  
-     h (:,:,:,3) = h (:,:,:,3) - 0.5*alpha*(1.0 - wk)*(h (:,:,:,3) + h (:,:,:,1) - 2.0*h (:,:,:,2))  
-     pq(:,:,:,3) = pq(:,:,:,3) - 0.5*alpha*(1.0 - wk)*(pq(:,:,:,3) + pq(:,:,:,1) - 2.0*pq(:,:,:,2))  
-     pi(:,:,3)   = pi(:,:,3)   - 0.5*alpha*(1.0 - wk)*(pi(:,:,3)   + pi(:,:,1)   - 2.0*pi(:,:,2))  
+     do i=1,nx+1
+       do j=1,ny+1
+         do k=1,nz
+           filter = pu(i,j,k,3) + pu(i,j,k,1) - 2.0*pu(i,j,k,2)
+           pu(i,j,k,2) = pu(i,j,k,2) + 0.5*alpha*wk*filter
+           pu(i,j,k,3) = pu(i,j,k,3) - 0.5*alpha*(1.0 - wk)*filter
+           filter = pv(i,j,k,3) + pv(i,j,k,1) - 2.0*pv(i,j,k,2)
+           pv(i,j,k,2) = pv(i,j,k,2) + 0.5*alpha*wk*filter
+           pv(i,j,k,3) = pv(i,j,k,3) - 0.5*alpha*(1.0 - wk)*filter            
+         enddo
+       enddo
+     enddo  
+     do i=1,nx
+       do j=1,ny
+         do k=1,nz
+           filter = h(i,j,k,3) + h(i,j,k,1) - 2.0*h(i,j,k,2)
+           h(i,j,k,2) = h(i,j,k,2) + 0.5*alpha*wk*filter
+           h(i,j,k,3) = h(i,j,k,3) - 0.5*alpha*(1.0 - wk)*filter
+           filter = pq(i,j,k,3) + pq(i,j,k,1) - 2.0*pq(i,j,k,2)
+           pq(i,j,k,2) = pq(i,j,k,2) + 0.5*alpha*wk*filter
+           pq(i,j,k,3) = pq(i,j,k,3) - 0.5*alpha*(1.0 - wk)*filter            
+         enddo
+         filter = pi(i,j,3) + pi(i,j,1) - 2.0*pi(i,j,2)
+         pi(i,j,2) = pi(i,j,2) + 0.5*alpha*wk*filter
+         pi(i,j,3) = pi(i,j,3) - 0.5*alpha*(1.0 - wk)*filter            
+       enddo
+     enddo  
    endif
 !
 !  Swapp variables for next model time step
@@ -517,12 +533,12 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
 !
    do i=1,nx
      do j=1,ny
-       pu_init(i,j,:) = 0.25*(pu(i+1,j+1,:,2) + pu(i,j+1,:,2) + pu(i+1,j,:,2) + pu(i,j,:,2))
-       pv_init(i,j,:) = 0.25*(pv(i+1,j+1,:,2) + pv(i,j+1,:,2) + pv(i+1,j,:,2) + pv(i,j,:,2))
+       pu_init(i,j,:) = 0.25*(pu(i+1,j+1,:,1) + pu(i,j+1,:,1) + pu(i+1,j,:,1) + pu(i,j,:,1))
+       pv_init(i,j,:) = 0.25*(pv(i+1,j+1,:,1) + pv(i,j+1,:,1) + pv(i+1,j,:,1) + pv(i,j,:,1))
      enddo
    enddo
 ! 
-   call surface_fluxes (t,qv,pu_init,pv_init,phi,pi(:,:,2),z0,ts,qs,ustar,tstar,qstar,ff,fg)
+   call surface_fluxes (t,qv,pu_init,pv_init,phi,pi(:,:,1),z0,ts,qs,ustar,tstar,qstar,ff,fg)
 !
    fluxu(:,:) = pi(:,:,2)*ustar(:,:)*ustar(:,:)*pu_init(:,:,nz)/(sqrt(pu_init(:,:,nz)**2 + pv_init(:,:,nz)**2))
    fluxv(:,:) = pi(:,:,2)*ustar(:,:)*ustar(:,:)*pv_init(:,:,nz)/(sqrt(pu_init(:,:,nz)**2 + pv_init(:,:,nz)**2))
@@ -540,9 +556,9 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
      enddo
    enddo
 !
-   fluxh(:,:) = pi(:,:,2)*(ustar(:,:)*tstar(:,:)*((pi(:,:,2)*sigma(nz) + ptop)/p00)**rscp/t(:,:,nz) + &
+   fluxh(:,:) = pi(:,:,1)*(ustar(:,:)*tstar(:,:)*((pi(:,:,1)*sigma(nz) + ptop)/p00)**rscp/t(:,:,nz) + &
               &         lv*ustar(:,:)*qstar(:,:)/(cp*t(:,:,nz)))
-   fluxq(:,:) = pi(:,:,2)*ustar(:,:)*qstar(:,:)
+   fluxq(:,:) = pi(:,:,1)*ustar(:,:)*qstar(:,:)
 !
 !  4) Exchange coefficients (at mass points)
 !

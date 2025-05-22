@@ -24,7 +24,7 @@ subroutine pressure_grady (k,pi,phi,tv,press,d7)
      jp = min(j,ny)
      cm = 0.25*(c(ip,jp) + c(ip,jm) + c(im,jp) + c(im,jm))
      d7(i,j) = cm*(pi(ip,jp) - pi(ip,jm) + pi(im,jp) - pi(im,jm))/(2.0*dy) - &
-              &   (pi(ip,jp)*phi(ip,jp) - pi(ip,jm)*phi(ip,jm) +            &
+              &   (pi(ip,jp)*phi(ip,jp) - pi(ip,jm)*phi(ip,jm) +             &
               &    pi(im,jp)*phi(im,jp) - pi(im,jm)*phi(im,jm))/(2.0*dy)
    enddo
  enddo   
