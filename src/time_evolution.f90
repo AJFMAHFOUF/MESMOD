@@ -158,12 +158,12 @@ print *,'Initial surface fluxes ok',fluxu(15,14),fluxv(15,14),fluxh(15,14),fluxq
      nti = 1
      ntm = 1
      ntf = 2
-     dt = dt0
+     dt  = dt0
    else
      nti = 1
      ntm = 2
      ntf = 3
-     dt = 2.*dt0
+     dt  = 2.*dt0
    endif
 !
    do k=1,nz ! Start vertical loop 
