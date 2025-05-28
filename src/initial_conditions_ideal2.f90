@@ -14,8 +14,9 @@ subroutine initial_conditions
  real, dimension (0:40)       :: tref, zref, pref, uref, qref, href
  real, dimension (nz)         :: zalt
  integer                      :: im, jm, i, j, k, kk
- real                         :: p, phatm, phatp, pim, pm, pp, ps, qvm, rh, theta, weight1, weight2
+ real                         :: p, phatm, phatp, pim, pm, pp, ps, qvm, rh, theta, weight1, weight2, x
  real                         :: qsat
+ real, parameter              :: dx=10000.0, h0=50.0, b=25000.0 
 !
  z_surf(:,:)     = 0.0
  soil_type (:,:) = 1
@@ -53,7 +54,13 @@ subroutine initial_conditions
  z_surf(14,21) = 270.0  ; z_surf(10,22) = 340.0  ; z_surf(11,22) = 590.0  ; z_surf(12,22) = 1.0 
  z_surf(10,23) = 3.0 
  
- z_surf(:,:) = 0.0
+ do i=1,nx
+   do j=1,ny
+      x = (float(i)-13.5)*dx
+      z_surf(i,j) =  h0/(1.0 + (x/b)**2)
+      if (j == 12) print *,'orography',i,z_surf(i,j)
+   enddo
+ enddo      
 !
 ! Define soil type (from Nickerson and Magaziner, 1976)
 !
@@ -176,6 +183,8 @@ subroutine initial_conditions
  zref(38) = 66000.0 ; tref(38) = 225.0
  zref(39) = 68000.0 ; tref(39) = 216.0
  zref(40) = 70000.0 ; tref(40) = 208.0
+ 
+ tref(:) = 273.15
 !
 ! Define the reference temperature profile at sea level
 !
@@ -186,7 +195,8 @@ subroutine initial_conditions
 !
 ! Define a reference profile for wind and relative humidity 
 !
- uref(0) = 2.5 ! set surface value to non zero since 1st value from reference profile is at 500 m
+ uref(0) = 20.0 ! set surface value to non zero since 1st value from reference profile is at 500 m
+ 
  do kk=1,40
    if (zref(kk) < 5000.) then
      uref(kk) = -5.0
@@ -198,7 +208,7 @@ subroutine initial_conditions
      uref(kk) = -5.0 + 10./2000.*(zref(kk) - 5000.)
    endif
    
-   uref(kk) = 5.0
+   uref(kk) = 20.0
 !
    if (zref(kk) < 3000.) then
      href(kk) = 0.80
@@ -240,10 +250,10 @@ subroutine initial_conditions
          if (pref(kk) >= p .and. pref(kk+1) < p) then
            weight1 = (p - pref(kk))/(pref(kk) - pref(kk+1)) ! linear interpolation in pressure (p)
            weight2 = (log(p) - log(pref(kk)))/(log(pref(kk))-log(pref(kk+1))) ! linear interpolation in log(p)
-           t(i,j,k)  = tref(kk) + (tref(kk) - tref(kk+1))*weight2
-           rh        = href(kk) + (href(kk) - href(kk+1))*weight2 
-           qv(i,j,k) = 0.0 ! rh*qsat(p,t(i,j,k))
-           u(i,j,k)  = uref(kk) + (uref(kk) - uref(kk+1))*weight2 
+           t(i,j,k)  = 273.15 ! tref(kk) + (tref(kk) - tref(kk+1))*weight2
+           rh        = 0.0  ! href(kk) + (href(kk) - href(kk+1))*weight2 
+           qv(i,j,k) = 0.0  ! rh*qsat(p,t(i,j,k))
+           u(i,j,k)  = 20.0 !uref(kk) + (uref(kk) - uref(kk+1))*weight2 
            zalt(k)   = zref(kk) + (zref(kk) - zref(kk+1))*weight2 ! height approximate
          endif        
        enddo  
@@ -303,7 +313,7 @@ subroutine initial_conditions
 !
 ! Write fields for initial conditions
 !
- open(unit=300,file='../data/initial_conditions_ideal1.dat')
+ open(unit=300,file='../data/initial_conditions_ideal2.dat')
 
  write (300,*) h
  write (300,*) pu

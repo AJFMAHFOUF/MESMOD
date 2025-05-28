@@ -1,0 +1,16 @@
+import numpy as np
+import matplotlib.pyplot as plt
+i,j,u,v,p=np.loadtxt('../data/windsurf.dat',unpack=True)
+y=np.reshape(p,(26,26),order='F')
+u1=np.reshape(u,(26,26),order='F')
+v1=np.reshape(v,(26,26),order='F')
+z = y #- np.mean(y)
+plt.contourf(z,cmap='Spectral')
+plt.colorbar()
+plt.xlabel('X axis')
+plt.ylabel('Y axis')
+plt.title('Surface pressure (hPa) time step 20')
+plt.savefig('../plots/Figure2.png',dpi=600)
+plt.show()
+plt.quiver(u1,v1,scale_units='inches',scale=20)
+plt.show()

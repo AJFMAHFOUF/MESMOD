@@ -15,7 +15,6 @@ subroutine pressure_gradx (k,pi,phi,tv,press,d6)
 ! 
  d6(:,:) = 0.0
  c(:,:) = phi(:,:) - rd*tv(:,:)*sigma(k)*pi(:,:)/press(:,:)
- !
  do i=1,nx+1
    do j=1,ny+1
      im = max(i-1,1)
