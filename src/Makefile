@@ -7,9 +7,9 @@ FFLAGS = -g -fdefault-real-8 -fimplicit-none
 
 LDFLAGS = 
 
-SRCS = master.f90 mod_vgrid.f90 mod_consts.f90 mod_hgrid.f90 thermo_functions.f90 compute_t_qv_qc.f90 \
-eddy_coefficients.f90 time_evolution.f90 pressure_gradx.f90 pressure_grady.f90 \
-surface_fluxes.f90 advech_hq.f90 advech_uv.f90 diff_horiz_hq.f90 diff_horiz_uv.f90 initial_conditions_ideal.f90
+SRCS = master.f90 mod_vgrid.f90 mod_consts.f90 mod_hgrid.f90 advecv_h.f90 advecv_u.f90 \
+compute_geopotential.f90 time_evolution.f90 pressure_gradx.f90  \
+advech_h.f90 advech_u.f90 diff_horiz_h.f90 diff_horiz_u.f90 
 
 OBJS = ${SRCS:.f90=.o}
 

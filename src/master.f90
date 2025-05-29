@@ -1,4 +1,3 @@
 program master
-!call initial_conditions
-call time_evolution
+call time_evolution_2Dversion
 end program master
