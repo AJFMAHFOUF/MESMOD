@@ -22,10 +22,10 @@ subroutine advecv_h (dnu,nudot,sigp,sigpm,h,d2)
        kp  = min(k+1,nz)  
        km  = max(k-1,1)
 !       
-       zzpup = h(i,kp) + h(i,k)
-       zzpum = h(i,k) + h(i,km)
+       zzpup = 0.5*(h(i,kp) + h(i,k))
+       zzpum = 0.5*(h(i,k) + h(i,km))
 !       
-       d2(i,k) = -1.0/(sigpm(k)*dnu(k))*(nudot(i,k+1)*sigp(k+1)*zzpup - nudot(i,k)*sigp(k)*zzpum) 
+       d2(i,k) = -1.0/(sigp(k)*dnu(k))*(nudot(i,k+1)*sigpm(kp)*zzpup - nudot(i,k)*sigpm(k)*zzpum) 
     
     enddo
  enddo    
