@@ -20,8 +20,8 @@ subroutine time_evolution_2Dversion
  real, dimension (nx+1,nz)     :: advvu
  real, dimension (nx,nz)       :: advvh
  real, dimension (nx,nz+1)     :: divu
- real, dimension (0:nz+1)      :: sigp
- real, dimension (nz)          :: kh, dnu
+ real, dimension (nz+1)        :: sigp
+ real, dimension (nz)          :: kh, dnu, sigpm
  integer                       :: i, k, nstep_max, im, ip, nstep, nt, nti, ntf, ntm, kk 
  real                          :: alpha, dt, wk, xpi, tmean, umean, psmean
  real                          :: kscale, filter, t1, t2, h0, b, x, zzz
@@ -47,21 +47,17 @@ subroutine time_evolution_2Dversion
    if (k < 5) then
      kh(k) = (5.0e-3 + 0.01*(sin(0.5*xpi*(sigma(6) - sigma(k+1))/sigma(6)))**2)*kscale
    else
-     kh(k) =  5.0e-3*kscale
+     kh(k) = 5.0e-3*kscale
    endif 
  enddo
 ! 
 !  Define depths of model layers in nu-coordinate system
-!
- do k=1,nz   
-   if (k == 1) then
-     dnu(k) = 0.5*(nu(k) + nu(k+1)) - nu(k-1)
-   elseif (k == nz) then
-     dnu(k) = nu(k+1) - 0.5*(nu(k)+nu(k-1))
-   else
-     dnu(k) = 0.5*(nu(k+1) - nu(k-1))
-   endif  
- enddo  
+! 
+  dnu(1)  = 0.5/float(nz-1)
+  dnu(nz) = 0.5/float(nz-1)
+  do k=2,nz-1
+    dnu(k)=1./float(nz-1)
+  enddo
  
 !
 ! Number of time steps
@@ -71,6 +67,10 @@ subroutine time_evolution_2Dversion
 ! vertical coordinate parameter : dsigma/dnu 
 !
  sigp(:) = 4.0*(1. - nu(:)**3)/3.0
+! 
+ do k=1,nz
+   sigpm(k) = 4.0*(1. - (0.5*(nu(k) + nu(k+1)))**3)/3.0
+ enddo  
 !
 ! Define initial conditions
 !
@@ -172,7 +172,7 @@ subroutine time_evolution_2Dversion
      pu(:,k,ntf) = pu(:,k,nti) + dt*(advhu(:) + pgradx(:) + diffhu(:))
      h(:,k,ntf)  = h(:,k,nti)  + dt*(advhh(:) + diffhh(:))
      
-     !i = 18
+     i = 18
      !print *,'horizontal advection u',k,advhu(i)/pi(i,ntm)*86400.0
      !print *,'pressure gradient     ',k,pgradx(i)/pi(i,ntm)*86400.0
      !print *,'horizontal diffusion u',k,diffhu(i)/pi(i,ntm)*86400.0
@@ -214,16 +214,16 @@ subroutine time_evolution_2Dversion
 !   
 !  2- Vertical transfers (vertical advection)
 ! 
-   call advecv_u (dnu,nudot,sigp,pu(:,:,ntm),advvu)
-   call advecv_h (dnu,nudot,sigp,h(:,:,ntm),advvh)
+   call advecv_u (dnu,nudot,sigp,sigpm,pu(:,:,ntm),advvu)
+   call advecv_h (dnu,nudot,sigp,sigpm,h(:,:,ntm),advvh)
 !
    pu(:,:,ntf) =  pu(:,:,ntf) + dt*advvu(:,:)
    h(:,:,ntf)  =  h(:,:,ntf)  + dt*advvh(:,:)   
-   
-!   do k=1,nz
-!     i = 18
-!     print *,'vertical advection',k,advvu(i,k)/pi(i,2)*86400.0,advvh(i,k)/pi(i,2)*86400.0
-!   enddo
+!   
+   do k=1,nz
+      i = 18
+!      print *,'vertical advection',k,advvu(i,k)/pi(i,2)*86400.0,advvh(i,k)/pi(i,2)*86400.0
+   enddo
 !   
 !  5 - Apply an Asselin filter on prognostic variables (modified by Williams, 2009)
 !
@@ -258,13 +258,12 @@ subroutine time_evolution_2Dversion
      pi(:,2)   = pi(:,3)
    endif
 !
-!  Define upper boundary conditions (kept to the initial conditions)
+!  Define upper boundary conditions 
 !
    do nt=1,3
-     pu(1:nx,1,nt) = umean*pi_init(:)
-     h(:,1,nt)  = h_init(:,1)*pi_init(:)
+!     pu(:,1,nt) = pu(:,2,nt)
+!     h(:,1,nt)  = h(:,2,nt)
    enddo
-   pu(nx+1,1,:) = pu(nx,1,:)
 !
 !  Define lateral boundary conditions (thermodynamical variables)
 !

@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 x1,z1,u1,t1,=np.loadtxt('../data/output1.dat',unpack=True)
-x=np.reshape(x1,(15,26),order='F')
-z=np.reshape(z1,(15,26),order='F')
-u=np.reshape(u1,(15,26),order='F')
-t=np.reshape(t1,(15,26),order='F')
+x=np.reshape(x1,(16,26),order='F')
+z=np.reshape(z1,(16,26),order='F')
+u=np.reshape(u1,(16,26),order='F')
+t=np.reshape(t1,(16,26),order='F')
 plt.contourf(x/1000,z/1000,u,cmap='Spectral')
 plt.colorbar()
 plt.xlabel('Distance (km)')

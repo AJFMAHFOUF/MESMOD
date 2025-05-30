@@ -2,7 +2,7 @@ module consts
 real, parameter ::  dt0 = 10.0,        &
                     psurf = 101325.0,  &
   &                 p00 = 100000.0,    &
-  &                 ptop = 1000.0,     & 
+  &                 ptop = 10000.0,    & 
   &                 tsurf = 299.0,     &
   &                 rg = 9.80665,      &
   &                 gradstd = 6.5E-3,  &
